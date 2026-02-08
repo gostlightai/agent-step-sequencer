@@ -47,6 +47,8 @@ python scripts/step-sequencer-runner.py [state.json path]
 | `STEP_RUNNER` | Path to runner script (optional) |
 | `STEP_MAX_RETRIES` | Max retries on FAILED before adding to blockers. Default: 3 |
 
+**Security:** Do not set `STEP_AGENT_CMD` to `bash`, `sh`, or `-c`—the runner rejects these to prevent command injection.
+
 ---
 
 ## Wire

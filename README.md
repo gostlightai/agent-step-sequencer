@@ -99,7 +99,11 @@ python test/test_step_sequencer.py
 
 **Wire:**
 
-1. Heartbeat invokes `scripts/step-sequencer-check.py` on each cycle
+1. Add to heartbeat:
+   ```bash
+   python ~/.openclaw/skills/agent-step-sequencer/scripts/step-sequencer-check.py ~/.openclaw/workspace/state.json
+   ```
+   (Use `~/.openclaw/workspace/skills/agent-step-sequencer/scripts/...` if skill lives in workspace.)
 2. Agent invokes it immediately after persisting state
 3. Set `STEP_AGENT_CMD` to your agent invocation (e.g. `openclaw ask`)
 
@@ -111,6 +115,8 @@ python test/test_step_sequencer.py
 |-----|-------------|
 | `STEP_AGENT_CMD` | Command to invoke agent (space-separated). Prompt appended. Default: `echo` |
 | `STEP_MAX_RETRIES` | Max retries on FAILED before adding to blockers. Default: 3 |
+
+**Security:** Use only your trusted agent binary (e.g. `openclaw ask`). Do not use `bash`, `sh`, or `-c`—the runner rejects these to prevent command injection.
 
 ---
 

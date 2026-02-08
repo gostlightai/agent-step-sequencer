@@ -182,6 +182,37 @@ def test_no_state_does_nothing():
     print("test_no_state_does_nothing: OK")
 
 
+def test_step_agent_cmd_blocked():
+    """STEP_AGENT_CMD=bash -c is rejected (command injection prevention)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        state_path = Path(tmp) / "state.json"
+        state = {
+            "plan": {"steps": {"step-1": {"title": "X", "instruction": "hello"}}},
+            "stepQueue": ["step-1"],
+            "currentStep": 0,
+            "stepRuns": {},
+            "stepDelayMinutes": 0,
+            "status": "IN_PROGRESS",
+        }
+        with open(state_path, "w") as f:
+            json.dump(state, f, indent=2)
+
+        env = os.environ.copy()
+        env["STEP_AGENT_CMD"] = "bash -c"
+
+        r = subprocess.run(
+            [sys.executable, str(RUNNER), str(state_path)],
+            cwd=tmp,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        assert r.returncode == 2
+        assert "bash" in r.stderr or "shell" in r.stderr.lower()
+
+    print("test_step_agent_cmd_blocked: OK")
+
+
 def test_done_state_does_nothing():
     """status=DONE -> check does nothing."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -206,6 +237,7 @@ def test_done_state_does_nothing():
 def main():
     tests = [
         test_no_state_does_nothing,
+        test_step_agent_cmd_blocked,
         test_done_state_does_nothing,
         test_basic_flow_two_steps,
         test_failure_marks_failed,

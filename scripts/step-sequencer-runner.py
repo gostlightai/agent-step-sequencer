@@ -27,10 +27,34 @@ def save_state(state_path: Path, state: dict) -> None:
         json.dump(state, f, indent=2)
 
 
+# Blocked to prevent command injection: instruction is appended and must not be executed by a shell
+_BLOCKED_BASES = frozenset({"bash", "sh", "dash", "zsh", "ksh", "eval", "exec"})
+_BLOCKED_ARGS = frozenset({"-c", "-e"})
+
+
+def _validate_agent_cmd(tokens: list[str]) -> None:
+    """Reject STEP_AGENT_CMD values that could execute instruction as shell code."""
+    if not tokens:
+        return
+    base = Path(tokens[0]).name.lower()
+    if base in _BLOCKED_BASES:
+        raise ValueError(
+            f"STEP_AGENT_CMD cannot use shell interpreter '{tokens[0]}'. "
+            "Use your agent binary (e.g. openclaw ask)."
+        )
+    if any(a in _BLOCKED_ARGS for a in tokens[1:]):
+        raise ValueError(
+            "STEP_AGENT_CMD cannot include -c or -e (shell command flags). "
+            "Use your agent binary (e.g. openclaw ask)."
+        )
+
+
 def get_agent_cmd() -> list[str]:
     """How to invoke the agent. Env STEP_AGENT_CMD (space-separated) or default."""
     cmd = os.environ.get("STEP_AGENT_CMD", "echo")
-    return cmd.split()
+    tokens = cmd.split()
+    _validate_agent_cmd(tokens)
+    return tokens
 
 
 def get_check_script_path(scripts_dir: Path) -> Path:
@@ -99,6 +123,7 @@ def run(state_path: Path) -> int:
             capture_output=True,
             text=True,
             timeout=3600,
+            shell=False,
         )
         success = result.returncode == 0
     except subprocess.TimeoutExpired:
@@ -125,10 +150,14 @@ def run(state_path: Path) -> int:
 
 
 def main() -> int:
-    state_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("state.json")
-    if not state_path.is_absolute():
-        state_path = Path.cwd() / state_path
-    return run(state_path)
+    try:
+        state_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("state.json")
+        if not state_path.is_absolute():
+            state_path = Path.cwd() / state_path
+        return run(state_path)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

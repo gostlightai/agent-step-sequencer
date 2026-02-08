@@ -182,6 +182,8 @@ flowchart TD
 
 OpenClaw: Wire `STEP_AGENT_CMD` to OpenClaw's agent invocation (e.g. `openclaw ask`).
 
+**Security:** Set `STEP_AGENT_CMD` only to your trusted agent binary. Do not use shell interpreters (`bash`, `sh`, etc.) or `-c`/`-e`—the runner rejects these to prevent command injection. The instruction from state.json is passed as a single argument; it is never executed by a shell.
+
 ---
 
 ## Final Deliverables Step
