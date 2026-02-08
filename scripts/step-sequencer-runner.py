@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""
+Step-sequencer runner. Invoked by check script or after failure.
+Reads state, gets current step instruction, invokes agent, marks DONE/FAILED.
+On FAILED: invokes check script immediately for retry.
+"""
+
+import json
+import os
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+def load_state(state_path: Path) -> dict | None:
+    if not state_path.exists():
+        return None
+    with open(state_path) as f:
+        return json.load(f)
+
+
+def save_state(state_path: Path, state: dict) -> None:
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(state_path, "w") as f:
+        json.dump(state, f, indent=2)
+
+
+def get_agent_cmd() -> list[str]:
+    """How to invoke the agent. Env STEP_AGENT_CMD (space-separated) or default."""
+    cmd = os.environ.get("STEP_AGENT_CMD", "echo")
+    return cmd.split()
+
+
+def get_check_script_path(scripts_dir: Path) -> Path:
+    return scripts_dir / "step-sequencer-check.py"
+
+
+def run(state_path: Path) -> int:
+    """
+    Run current step. Returns 0 on success, 1 on failure.
+    1. Read state
+    2. Get current step instruction from plan.steps
+    3. If stepDelayMinutes > 0 and not first run of step, sleep
+    4. Invoke agent (configurable via STEP_AGENT_CMD)
+    5. Mark DONE or FAILED in stepRuns
+    6. If FAILED: invoke check script immediately
+    """
+    state = load_state(state_path)
+    if state is None:
+        return 0
+
+    plan = state.get("plan", {})
+    steps = plan.get("steps", {})
+    step_queue = state.get("stepQueue", [])
+    current_step = state.get("currentStep", 0)
+    step_runs = state.get("stepRuns", {})
+    step_delay = state.get("stepDelayMinutes", 0)
+    scripts_dir = Path(__file__).resolve().parent
+
+    if not step_queue or current_step >= len(step_queue):
+        return 0
+
+    step_id = step_queue[current_step]
+    step_def = steps.get(step_id, {})
+    instruction = step_def.get("instruction", "")
+    step_info = step_runs.get(step_id, {"status": "PENDING", "tries": 0})
+    tries = step_info.get("tries", 0)
+
+    # Troubleshoot prompt on retry (tries > 0 means we've failed before)
+    if tries > 0 and step_info.get("error"):
+        error = step_info.get("error", "unknown")
+        prompt = (
+            f"Step {step_id} failed (tries: {tries}). "
+            f"Previous run ended with: {error}. "
+            f"Please troubleshoot and retry: {instruction}"
+        )
+    else:
+        prompt = instruction
+
+    # Apply delay between steps (not before first run of a step)
+    if step_delay > 0 and tries > 0 and step_info.get("lastRunIso"):
+        time.sleep(step_delay * 60)
+
+    now = datetime.now(timezone.utc).isoformat()
+    step_runs[step_id] = {
+        "status": "IN_PROGRESS",
+        "tries": tries + 1,
+        "lastRunIso": now,
+    }
+    state["stepRuns"] = step_runs
+    save_state(state_path, state)
+
+    agent_cmd = get_agent_cmd() + [prompt]
+    try:
+        result = subprocess.run(
+            agent_cmd,
+            capture_output=True,
+            text=True,
+            timeout=3600,
+        )
+        success = result.returncode == 0
+    except subprocess.TimeoutExpired:
+        success = False
+        result = type("Result", (), {"stderr": "Timeout"})()
+
+    step_runs[step_id]["status"] = "DONE" if success else "FAILED"
+    step_runs[step_id]["lastRunIso"] = datetime.now(timezone.utc).isoformat()
+    if not success:
+        step_runs[step_id]["error"] = getattr(result, "stderr", str(result))[:500]
+    state["stepRuns"] = step_runs
+    save_state(state_path, state)
+
+    if not success:
+        check_script = get_check_script_path(scripts_dir)
+        if check_script.exists():
+            subprocess.run(
+                [sys.executable, str(check_script), str(state_path)],
+                cwd=state_path.parent,
+            )
+        return 1
+
+    return 0
+
+
+def main() -> int:
+    state_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("state.json")
+    if not state_path.is_absolute():
+        state_path = Path.cwd() / state_path
+    return run(state_path)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
