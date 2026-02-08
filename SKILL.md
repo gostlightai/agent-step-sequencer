@@ -53,6 +53,18 @@ Agent builds a plan when user approves. During approval, agent asks: **Use 2-min
 
 ---
 
+## Step execution: autonomous recovery
+
+**Do not stop mid-step to ask the user.** When executing a step, if something fails (empty fetch, API error, source unavailable):
+
+1. **Retry** once (same source/URL) if it might be transient.
+2. **Try an alternative** (e.g. CoinGecko instead of CoinMarketCap, different endpoint or token) and complete the step with what you can.
+3. **Document and exit** only if you truly cannot complete the step—then exit non-zero so the runner marks FAILED; the scheduler will retry with a troubleshoot prompt.
+
+Do not stop silently. If you cannot complete the step after retry and alternatives: **actively prompt the user**—post a short message that you hit a snag, what failed, and what you tried (e.g. "Step 2 (research Meteora) failed: CoinMarketCap fetch empty, tried CoinGecko—also empty. Need another source or skip this token."). Then exit non-zero so the runner marks FAILED and the scheduler can retry or add to blockers. Never just stop without telling the user.
+
+---
+
 ## How Agent Determines Multi-Step
 
 **Agent must suggest before proceeding.** When MULTI_STEP, propose the step plan and wait for confirmation before executing.
@@ -194,4 +206,13 @@ Manual copy:
 cp -r agent-step-sequencer ~/.openclaw/skills/agent-step-sequencer
 ```
 
-Wire heartbeat to invoke `scripts/step-sequencer-check.py`. Agent should invoke it immediately after persisting state.
+**Heartbeat integration** — Add this to your heartbeat (or have the agent add it):
+
+```bash
+# Agent Step Sequencer check (add to heartbeat cycle)
+python ~/.openclaw/skills/agent-step-sequencer/scripts/step-sequencer-check.py ~/.openclaw/workspace/state.json
+```
+
+Or if skill is in workspace: `python ~/.openclaw/workspace/skills/agent-step-sequencer/scripts/step-sequencer-check.py ~/.openclaw/workspace/state.json`
+
+Set `STEP_AGENT_CMD` to your agent invocation before running. Agent should invoke the check script immediately after persisting state.
