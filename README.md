@@ -8,7 +8,9 @@ Multi-step scheduler for in-depth agent requests. Detects when a task needs mult
 
 ## Why Agent Step Sequencer?
 
-Tasks like "research X, summarize it, then write a paper" or "pull data from 5 sources and merge" need sequential execution. A single agent run stops when it finishes one step. Agent Step Sequencer:
+Tasks like "research X, summarize it, then write a paper" or "pull data from 5 sources and merge" need sequential execution. A single agent run stops when it finishes one step. 
+
+Agent Step Sequencer:
 
 - **Persists state** — survives gateway resets mid-step
 - **Schedules steps** — check script invokes runner; runner invokes agent with each step instruction
