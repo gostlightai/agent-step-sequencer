@@ -146,6 +146,13 @@ def run(state_path: Path) -> int:
             )
         return 1
 
+    # Advance to next step immediately: invoke check script so it bumps currentStep and runs runner again
+    check_script = get_check_script_path(scripts_dir)
+    if check_script.exists():
+        subprocess.run(
+            [sys.executable, str(check_script), str(state_path)],
+            cwd=state_path.parent,
+        )
     return 0
 
 

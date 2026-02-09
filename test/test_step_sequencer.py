@@ -34,7 +34,7 @@ def load_state(state_path: Path) -> dict:
 
 
 def test_basic_flow_two_steps():
-    """Check invokes runner, step 1 runs, then step 2, then DONE."""
+    """Check invokes runner; with auto-advance, one run_check can complete both steps."""
     with tempfile.TemporaryDirectory() as tmp:
         state_path = Path(tmp) / "state.json"
         state = {
@@ -56,24 +56,14 @@ def test_basic_flow_two_steps():
         env = os.environ.copy()
         env["STEP_AGENT_CMD"] = "echo"
 
-        # Run 1: execute step 1
+        # Run 1: runner does step 1 -> DONE -> invokes check -> advance -> runner step 2 -> DONE -> check -> advance
         run_check(state_path, env)
         s = load_state(state_path)
         assert s["stepRuns"]["step-1"]["status"] == "DONE"
-        assert s["currentStep"] == 0  # check hasn't advanced yet
-
-        # Run 2: advance, execute step 2
-        run_check(state_path, env)
-        s = load_state(state_path)
-        assert s["currentStep"] == 1
         assert s["stepRuns"]["step-2"]["status"] == "DONE"
-
-        # Run 3: advance past step 2, runner no-op
-        run_check(state_path, env)
-        s = load_state(state_path)
         assert s["currentStep"] == 2
 
-        # Run 4: detect all done, set status DONE
+        # Run 2: check sees currentStep >= len(stepQueue), sets status DONE
         run_check(state_path, env)
         s = load_state(state_path)
         assert s["status"] == "DONE"
@@ -137,7 +127,7 @@ def test_retry_stops_at_max_retries():
 
 
 def test_recovery_mid_flow():
-    """State with step 1 DONE, step 2 PENDING -> runner picks up step 2."""
+    """State with step 1 DONE, step 2 PENDING -> one run_check advances and runs step 2."""
     with tempfile.TemporaryDirectory() as tmp:
         state_path = Path(tmp) / "state.json"
         state = {
@@ -161,10 +151,9 @@ def test_recovery_mid_flow():
 
         run_check(state_path, env)
         s = load_state(state_path)
-        assert s["currentStep"] == 1
+        assert s["currentStep"] == 2
         assert s["stepRuns"]["step-2"]["status"] == "DONE"
 
-        run_check(state_path, env)  # advance past step 2
         run_check(state_path, env)  # set status DONE
         s = load_state(state_path)
         assert s["status"] == "DONE"
