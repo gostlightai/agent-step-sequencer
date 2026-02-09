@@ -21,13 +21,13 @@ Multi-step scheduler for in-depth requests. Enables step-based actions with hear
 
 ## Plan Format
 
-Agent builds a plan when user approves. During approval, agent asks: **Use 2-minute delay between steps?** Recommended for rate-limit–sensitive API calls. User chooses; agent sets `stepDelayMinutes` (0 or 2) in state. Each step has `title` and `instruction`:
+Agent builds a plan when user approves. During approval, agent asks: **Use 2-minute delay between steps?** Recommended for rate-limit–sensitive API calls. User chooses; agent sets `stepDelayMinutes` (0 or 2) in state. Each step has `title`, `instruction`, and optionally `requiredOutputs` (paths relative to workspace that must exist before the step is marked DONE):
 
 ```json
 {
   "plan": {
     "steps": {
-      "step-1": { "title": "Research topic X", "instruction": "Research topic X and produce a concise summary" },
+      "step-1": { "title": "Research topic X", "instruction": "Research topic X and produce a concise summary", "requiredOutputs": ["study/summary.md"] },
       "step-2": { "title": "Write paper", "instruction": "Using the summary from step 1, write a research paper..." }
     }
   },
@@ -41,6 +41,7 @@ Agent builds a plan when user approves. During approval, agent asks: **Use 2-min
 
 - **title**: Human-readable label
 - **instruction**: Full instruction for the agent (research, summarize, pull X from Y, etc.)
+- **requiredOutputs** (optional): List of paths (relative to workspace). Runner marks step DONE only if agent exits 0 and all these paths exist; otherwise step is FAILED with "Missing required outputs: …".
 
 ---
 
@@ -105,7 +106,7 @@ DECISION =
 
 See [references/state-schema.md](references/state-schema.md). Key fields:
 
-- `plan.steps`: step definitions (`title`, `instruction`)
+- `plan.steps`: step definitions (`title`, `instruction`, optional `requiredOutputs`)
 - `stepQueue`, `currentStep`, `stepRuns`
 - `stepDelayMinutes`: 0 = no delay; 2 = 2 min between steps
 - `blockers`, `lastHeartbeatIso`, `artifacts`

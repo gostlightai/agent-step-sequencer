@@ -6,7 +6,7 @@ Minimal schema for persisted state. Survives gateway resets mid-step.
 
 | Field | Type | Description |
 |-------|------|--------------|
-| `plan` | object | Step definitions. `plan.steps`: object keyed by stepId, each `{ title, instruction }` |
+| `plan` | object | Step definitions. `plan.steps`: object keyed by stepId, each `{ title, instruction, requiredOutputs? }`. Optional `requiredOutputs`: paths (relative to workspace) that must exist before the step is marked DONE. |
 | `stepQueue` | string[] | Ordered step IDs |
 | `currentStep` | number | Index/cursor into stepQueue |
 | `stepRuns` | object | Keyed by stepId. Each value: `{ status, tries, lastRunIso, error? }` |
@@ -24,7 +24,8 @@ Minimal schema for persisted state. Survives gateway resets mid-step.
     "steps": {
       "step-1": {
         "title": "Research topic X",
-        "instruction": "Research topic X and produce a concise summary"
+        "instruction": "Research topic X and produce a concise summary",
+        "requiredOutputs": ["study/summary.md"]
       },
       "step-2": {
         "title": "Write research paper",
