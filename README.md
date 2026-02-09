@@ -94,14 +94,14 @@ clawhub install agent-step-sequencer
 **Test:**
 
 ```bash
-python test/test_step_sequencer.py
+python3 test/test_step_sequencer.py
 ```
 
 **Wire:**
 
 1. Add to heartbeat:
    ```bash
-   python ~/.openclaw/skills/agent-step-sequencer/scripts/step-sequencer-check.py ~/.openclaw/workspace/state.json
+   python3 ~/.openclaw/skills/agent-step-sequencer/scripts/step-sequencer-check.py ~/.openclaw/workspace/state.json
    ```
    (Use `~/.openclaw/workspace/skills/agent-step-sequencer/scripts/...` if skill lives in workspace.)
 2. Agent invokes it immediately after persisting state

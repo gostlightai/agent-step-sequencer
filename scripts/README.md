@@ -7,7 +7,7 @@ Invoked by heartbeat or agent. Reads `state.json`, invokes runner when work exis
 **Usage:**
 
 ```bash
-python scripts/step-sequencer-check.py [state.json path]
+python3 scripts/step-sequencer-check.py [state.json path]
 ```
 
 **Behavior:**
@@ -26,7 +26,7 @@ Invoked by check script. Runs current step: invokes agent with instruction, wait
 **Usage:**
 
 ```bash
-python scripts/step-sequencer-runner.py [state.json path]
+python3 scripts/step-sequencer-runner.py [state.json path]
 ```
 
 **Behavior:**
@@ -61,5 +61,5 @@ python scripts/step-sequencer-runner.py [state.json path]
 ## Tests
 
 ```bash
-python test/test_step_sequencer.py
+python3 test/test_step_sequencer.py
 ```

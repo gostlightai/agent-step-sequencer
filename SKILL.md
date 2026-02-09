@@ -212,9 +212,9 @@ cp -r agent-step-sequencer ~/.openclaw/skills/agent-step-sequencer
 
 ```bash
 # Agent Step Sequencer check (add to heartbeat cycle)
-python ~/.openclaw/skills/agent-step-sequencer/scripts/step-sequencer-check.py ~/.openclaw/workspace/state.json
+python3 ~/.openclaw/skills/agent-step-sequencer/scripts/step-sequencer-check.py ~/.openclaw/workspace/state.json
 ```
 
-Or if skill is in workspace: `python ~/.openclaw/workspace/skills/agent-step-sequencer/scripts/step-sequencer-check.py ~/.openclaw/workspace/state.json`
+Or if skill is in workspace: `python3 ~/.openclaw/workspace/skills/agent-step-sequencer/scripts/step-sequencer-check.py ~/.openclaw/workspace/state.json`
 
 Set `STEP_AGENT_CMD` to your agent invocation before running. Agent should invoke the check script immediately after persisting state.
