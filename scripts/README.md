@@ -43,7 +43,7 @@ python3 scripts/step-sequencer-runner.py [state.json path]
 
 | Env | Description |
 |-----|-------------|
-| `STEP_AGENT_CMD` | Command to invoke agent (space-separated). Prompt appended. Default: `echo` |
+| `STEP_AGENT_CMD` | **Required.** Command to invoke agent (space-separated). Prompt appended. Example: `openclaw agent --message` |
 | `STEP_RUNNER` | Path to runner script (optional) |
 | `STEP_MAX_RETRIES` | Max retries on FAILED before adding to blockers. Default: 3 |
 

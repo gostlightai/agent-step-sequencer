@@ -1,6 +1,7 @@
 ---
 name: agent-step-sequencer
 description: Multi-step scheduler for in-depth agent requests. Detects when user needs multiple steps, suggests plan and waits for confirmation, persists state, and runs heartbeat-aware flow. Use when requests have 3+ actions, sequential dependencies, output dependencies, or high scope/risk.
+metadata: {"openclaw":{"emoji":"🔗","requires":{"bins":["python3"],"env":["STEP_AGENT_CMD"]},"install":[{"id":"apt","kind":"apt","package":"python3","bins":["python3"],"label":"Install Python 3","os":["linux"]},{"id":"brew","kind":"brew","formula":"python@3","bins":["python3"],"label":"Install Python 3","os":["darwin"]}]}}
 ---
 
 # Agent Step Sequencer
@@ -177,11 +178,11 @@ flowchart TD
 
 | Env | Description |
 |-----|-------------|
-| `STEP_AGENT_CMD` | Command to invoke agent (space-separated). Prompt appended as last arg. Default: `echo` |
+| `STEP_AGENT_CMD` | **Required.** Command to invoke agent (space-separated). Prompt appended as last arg. Example: `openclaw agent --message` |
 | `STEP_RUNNER` | Path to step-sequencer-runner.py (optional) |
 | `STEP_MAX_RETRIES` | Max retries on FAILED before adding to blockers. Default: 3 |
 
-OpenClaw: Wire `STEP_AGENT_CMD` to OpenClaw's agent invocation (e.g. `openclaw ask`).
+OpenClaw: Wire `STEP_AGENT_CMD` to OpenClaw's agent invocation (e.g. `openclaw agent --message`).
 
 **Security:** Set `STEP_AGENT_CMD` only to your trusted agent binary. Do not use shell interpreters (`bash`, `sh`, etc.) or `-c`/`-e`—the runner rejects these to prevent command injection. The instruction from state.json is passed as a single argument; it is never executed by a shell.
 

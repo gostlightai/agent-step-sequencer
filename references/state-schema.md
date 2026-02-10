@@ -9,7 +9,7 @@ Minimal schema for persisted state. Survives gateway resets mid-step.
 | `plan` | object | Step definitions. `plan.steps`: object keyed by stepId, each `{ title, instruction, requiredOutputs? }`. Optional `requiredOutputs`: paths (relative to workspace) that must exist before the step is marked DONE. |
 | `stepQueue` | string[] | Ordered step IDs |
 | `currentStep` | number | Index/cursor into stepQueue |
-| `stepRuns` | object | Keyed by stepId. Each value: `{ status, tries, lastRunIso, error? }` |
+| `stepRuns` | object | Keyed by stepId. Each value: `{ status, tries, lastRunIso, stdout?, error? }` |
 | `stepDelayMinutes` | number | 0 = no delay between steps; 2 = 2 min delay. Default 0. |
 | `blockers` | string[] | If stuck (optional) |
 | `lastHeartbeatIso` | string | ISO timestamp when last check ran |
@@ -51,4 +51,14 @@ Minimal schema for persisted state. Survives gateway resets mid-step.
 - `IN_PROGRESS`: step runner currently executing or queued
 - `DONE`: step completed
 - `FAILED`: step failed (runner marks this); `error` field used for troubleshoot prompt
+
+## Per-Step Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | `PENDING`, `IN_PROGRESS`, `DONE`, or `FAILED` |
+| `tries` | number | Execution attempt count |
+| `lastRunIso` | string | ISO 8601 timestamp of last execution |
+| `stdout` | string | Agent stdout output (first 500 chars). Present on success. |
+| `error` | string | Agent stderr output (first 500 chars). Present on failure. |
 - No active task: `status` = DONE → heartbeat does nothing

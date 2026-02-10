@@ -303,10 +303,101 @@ def test_done_state_does_nothing():
     print("test_done_state_does_nothing: OK")
 
 
+def test_step_agent_cmd_unset():
+    """STEP_AGENT_CMD unset -> runner exits 2 with clear error."""
+    with tempfile.TemporaryDirectory() as tmp:
+        state_path = Path(tmp) / "state.json"
+        state = {
+            "plan": {"steps": {"step-1": {"title": "X", "instruction": "hello"}}},
+            "stepQueue": ["step-1"],
+            "currentStep": 0,
+            "stepRuns": {},
+            "stepDelayMinutes": 0,
+            "status": "IN_PROGRESS",
+        }
+        with open(state_path, "w") as f:
+            json.dump(state, f, indent=2)
+
+        env = os.environ.copy()
+        env.pop("STEP_AGENT_CMD", None)
+
+        r = subprocess.run(
+            [sys.executable, str(RUNNER), str(state_path)],
+            cwd=tmp,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        assert r.returncode == 2, f"Expected exit 2, got {r.returncode}"
+        assert "STEP_AGENT_CMD" in r.stderr
+
+    print("test_step_agent_cmd_unset: OK")
+
+
+def test_step_agent_cmd_binary_not_found():
+    """STEP_AGENT_CMD points to nonexistent binary -> runner exits 2."""
+    with tempfile.TemporaryDirectory() as tmp:
+        state_path = Path(tmp) / "state.json"
+        state = {
+            "plan": {"steps": {"step-1": {"title": "X", "instruction": "hello"}}},
+            "stepQueue": ["step-1"],
+            "currentStep": 0,
+            "stepRuns": {},
+            "stepDelayMinutes": 0,
+            "status": "IN_PROGRESS",
+        }
+        with open(state_path, "w") as f:
+            json.dump(state, f, indent=2)
+
+        env = os.environ.copy()
+        env["STEP_AGENT_CMD"] = "nonexistent-binary-xyz --message"
+
+        r = subprocess.run(
+            [sys.executable, str(RUNNER), str(state_path)],
+            cwd=tmp,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        assert r.returncode == 2, f"Expected exit 2, got {r.returncode}"
+        assert "not found on PATH" in r.stderr
+
+    print("test_step_agent_cmd_binary_not_found: OK")
+
+
+def test_stdout_captured_on_success():
+    """Agent stdout is stored in stepRuns on success."""
+    with tempfile.TemporaryDirectory() as tmp:
+        state_path = Path(tmp) / "state.json"
+        state = {
+            "plan": {"steps": {"step-1": {"title": "Echo", "instruction": "hello world"}}},
+            "stepQueue": ["step-1"],
+            "currentStep": 0,
+            "stepRuns": {},
+            "stepDelayMinutes": 0,
+            "status": "IN_PROGRESS",
+        }
+        with open(state_path, "w") as f:
+            json.dump(state, f, indent=2)
+
+        env = os.environ.copy()
+        env["STEP_AGENT_CMD"] = "echo"
+
+        run_runner(state_path, env)
+        s = load_state(state_path)
+        assert s["stepRuns"]["step-1"]["status"] == "DONE"
+        assert "stdout" in s["stepRuns"]["step-1"]
+        assert "hello world" in s["stepRuns"]["step-1"]["stdout"]
+
+    print("test_stdout_captured_on_success: OK")
+
+
 def main():
     tests = [
         test_no_state_does_nothing,
         test_step_agent_cmd_blocked,
+        test_step_agent_cmd_unset,
+        test_step_agent_cmd_binary_not_found,
         test_done_state_does_nothing,
         test_basic_flow_two_steps,
         test_failure_marks_failed,
@@ -314,6 +405,7 @@ def main():
         test_recovery_mid_flow,
         test_required_outputs_missing_fails,
         test_required_outputs_present_succeeds,
+        test_stdout_captured_on_success,
     ]
     failed = []
     for t in tests:

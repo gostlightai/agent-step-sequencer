@@ -7,6 +7,7 @@ On FAILED: invokes check script immediately for retry.
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -40,20 +41,31 @@ def _validate_agent_cmd(tokens: list[str]) -> None:
     if base in _BLOCKED_BASES:
         raise ValueError(
             f"STEP_AGENT_CMD cannot use shell interpreter '{tokens[0]}'. "
-            "Use your agent binary (e.g. openclaw ask)."
+            "Use your agent binary (e.g. openclaw agent --message)."
         )
     if any(a in _BLOCKED_ARGS for a in tokens[1:]):
         raise ValueError(
             "STEP_AGENT_CMD cannot include -c or -e (shell command flags). "
-            "Use your agent binary (e.g. openclaw ask)."
+            "Use your agent binary (e.g. openclaw agent --message)."
         )
 
 
 def get_agent_cmd() -> list[str]:
-    """How to invoke the agent. Env STEP_AGENT_CMD (space-separated) or default."""
-    cmd = os.environ.get("STEP_AGENT_CMD", "echo")
+    """How to invoke the agent. Env STEP_AGENT_CMD (space-separated). Required."""
+    cmd = os.environ.get("STEP_AGENT_CMD", "").strip()
+    if not cmd:
+        raise ValueError(
+            "STEP_AGENT_CMD is not set. Set it to your agent command "
+            "(e.g. export STEP_AGENT_CMD='openclaw agent --message')."
+        )
     tokens = cmd.split()
     _validate_agent_cmd(tokens)
+    binary = tokens[0]
+    if not shutil.which(binary):
+        raise ValueError(
+            f"STEP_AGENT_CMD binary '{binary}' not found on PATH. "
+            "Ensure it is installed and accessible."
+        )
     return tokens
 
 
@@ -124,8 +136,10 @@ def run(state_path: Path) -> int:
     else:
         prompt = instruction
 
-    # Apply delay between steps (not before first run of a step)
-    if step_delay > 0 and tries > 0 and step_info.get("lastRunIso"):
+    # Apply delay: between steps (not the very first step) or on retries
+    is_retry = tries > 0 and step_info.get("lastRunIso")
+    is_subsequent_step = current_step > 0 and tries == 0
+    if step_delay > 0 and (is_retry or is_subsequent_step):
         time.sleep(step_delay * 60)
 
     now = datetime.now(timezone.utc).isoformat()
@@ -159,6 +173,9 @@ def run(state_path: Path) -> int:
 
     step_runs[step_id]["status"] = "DONE" if success else "FAILED"
     step_runs[step_id]["lastRunIso"] = datetime.now(timezone.utc).isoformat()
+    stdout = getattr(result, "stdout", "") or ""
+    if stdout:
+        step_runs[step_id]["stdout"] = stdout[:500]
     if not success:
         step_runs[step_id]["error"] = getattr(result, "stderr", str(result))[:500]
     state["stepRuns"] = step_runs
